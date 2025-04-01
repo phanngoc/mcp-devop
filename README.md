@@ -1,90 +1,135 @@
-# Advanced AWS Integration MCP Server
+# Google Drive MCP Server
 
-This project provides a powerful AWS integration server using Claude MCP (Model Control Protocol) capabilities. It allows you to interact with AWS services directly through Claude, accessing AWS resources and tools.
+This project provides a Google Drive integration server using Claude MCP (Model Control Protocol) capabilities. It allows you to interact with Google Drive and Google Sheets directly through Claude.
 
 ## Setup Instructions
 
-### 1. Environment Configuration
+### 1. Google Cloud Project Setup
 
-Create a `.env` file in the root directory with your AWS credentials and configuration:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google Drive API and Google Sheets API
+4. Create OAuth 2.0 credentials:
+   - Go to APIs & Services > Credentials
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "Desktop application"
+   - Download the credentials and save as `credentials.json` in the project root
 
-```
-# AWS Configuration
-AWS_DEFAULT_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_access_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_key_here
-# AWS_SESSION_TOKEN=your_session_token_here
+### 2. Environment Setup
 
-# AWS Advanced Configuration (Uncomment as needed)
-# AWS_PROFILE=default
-# AWS_CONFIG_FILE=~/.aws/config
-# AWS_SHARED_CREDENTIALS_FILE=~/.aws/credentials
-# AWS_STS_REGIONAL_ENDPOINTS=regional
-# AWS_RETRY_MODE=standard
-# AWS_MAX_ATTEMPTS=5
-
-# Application Settings
-DEBUG=True
-LOG_LEVEL=INFO
+1. Create a virtual environment and activate it:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 2. Install Dependencies
-
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 3. Running the Server
 
-#### Option 1: Run Directly
-
 ```bash
-python advanced_server.py
+python gdrive_mcp_server.py
 ```
 
-#### Option 2: Use the Streamlit Interface
+The first time you run the server, it will open a browser window for OAuth authentication. After authenticating, the credentials will be saved in `token.json`.
 
-```bash
-streamlit run advanced_app.py
+## Available Endpoints
+
+### 1. Google Drive Search
+- **Endpoint**: `/gdrive_search`
+- **Method**: POST
+- **Input**:
+  ```json
+  {
+    "query": "search query",
+    "pageToken": "optional_page_token",
+    "pageSize": 10
+  }
+  ```
+
+### 2. Google Drive File Read
+- **Endpoint**: `/gdrive_read_file`
+- **Method**: POST
+- **Input**:
+  ```json
+  {
+    "fileId": "google_drive_file_id"
+  }
+  ```
+
+### 3. Google Sheets Read
+- **Endpoint**: `/gsheets_read`
+- **Method**: POST
+- **Input**:
+  ```json
+  {
+    "spreadsheetId": "spreadsheet_id",
+    "ranges": ["Sheet1!A1:B10"],
+    "sheetId": null
+  }
+  ```
+
+### 4. Google Sheets Update Cell
+- **Endpoint**: `/gsheets_update_cell`
+- **Method**: POST
+- **Input**:
+  ```json
+  {
+    "fileId": "spreadsheet_id",
+    "range": "Sheet1!A1",
+    "value": "New Value"
+  }
+  ```
+
+## Example Usage
+
+```python
+import requests
+
+# Search for files
+response = requests.post("http://localhost:8000/gdrive_search", json={
+    "query": "name contains 'report'",
+    "pageSize": 10
+})
+print(response.json())
+
+# Read file content
+response = requests.post("http://localhost:8000/gdrive_read_file", json={
+    "fileId": "your_file_id"
+})
+print(response.json())
+
+# Read from Google Sheets
+response = requests.post("http://localhost:8000/gsheets_read", json={
+    "spreadsheetId": "your_spreadsheet_id",
+    "ranges": ["Sheet1!A1:D10"]
+})
+print(response.json())
+
+# Update cell in Google Sheets
+response = requests.post("http://localhost:8000/gsheets_update_cell", json={
+    "fileId": "your_spreadsheet_id",
+    "range": "Sheet1!A1",
+    "value": "Updated Value"
+})
+print(response.json())
 ```
 
-## Available AWS Services
+## Error Handling
 
-The MCP server integrates with the following AWS services:
+The server returns appropriate HTTP status codes and error messages:
+- 200: Successful operation
+- 400: Invalid request parameters
+- 401: Authentication error
+- 403: Permission denied
+- 404: Resource not found
+- 500: Internal server error
 
-- **S3**: List buckets, objects, and access S3 content
-- **DynamoDB**: Query tables and access items
-- **CloudWatch**: View metrics and alarms
-- **Lambda**: List functions and view configurations
-- **EC2**: List instances and check status
-- **IAM**: List roles and policies
+## Security Notes
 
-## MCP Resource URLs
-
-Access AWS resources using MCP resource URLs:
-
-- S3: `s3://{bucket}/{key}`
-- DynamoDB: `dynamodb://{table}/{key_name}/{key_value}`
-- CloudWatch: `cloudwatch://{namespace}/{metric_name}/{period}`
-- Lambda: `lambda://{function_name}`
-- EC2: `ec2://{instance_id}`
-- IAM: `iam://{role_name}`
-
-## Environment Variables
-
-The application uses the following environment variables, loaded via python-dotenv:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| AWS_DEFAULT_REGION | AWS region to use | us-east-1 |
-| AWS_ACCESS_KEY_ID | AWS access key ID | - |
-| AWS_SECRET_ACCESS_KEY | AWS secret access key | - |
-| AWS_SESSION_TOKEN | AWS session token for temporary credentials | - |
-| AWS_PROFILE | AWS profile name to use | default |
-| AWS_CONFIG_FILE | Path to AWS config file | ~/.aws/config |
-| AWS_SHARED_CREDENTIALS_FILE | Path to AWS credentials file | ~/.aws/credentials |
-| AWS_STS_REGIONAL_ENDPOINTS | STS endpoint resolution logic | legacy |
-| AWS_RETRY_MODE | Type of retries | legacy |
-| AWS_MAX_ATTEMPTS | Maximum number of attempts for requests | - |
-| DEBUG | Enable debug mode | True |
-| LOG_LEVEL | Logging level | INFO |
+1. Keep your `credentials.json` and `token.json` files secure and never commit them to version control
+2. The server runs on localhost by default - implement appropriate security measures if deploying to production
+3. Implement rate limiting and request validation as needed for your use case
